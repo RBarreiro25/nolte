@@ -1,36 +1,127 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Nolte Event Service
 
-## Getting Started
+## How to Run Backend Locally
 
-First, run the development server:
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
 
+### Installation & Setup
+
+1. **Clone and install**
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <your-repo-url>
+cd nolte-challenge
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. **Environment Configuration**
+```bash
+# Copy environment template and customize if needed
+cp .env.example .env
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. **Start Development Server**
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. **Access the Application**
+- **Frontend**: http://localhost:3000
+- **API**: http://localhost:3000/api
 
-## Learn More
+### Testing
+```bash
+npm test                 # Run integration tests
+npm run test:watch       # Run tests in watch mode
+npm run test:coverage    # Run tests with coverage
+```
 
-To learn more about Next.js, take a look at the following resources:
+## API Endpoints
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Authentication
+All admin endpoints require: `Authorization: Bearer admin-token-123`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+#### **POST /api/events** (Admin)
+Create a new event
+```bash
+curl -X POST http://localhost:3000/api/events \
+  -H "Authorization: Bearer admin-token-123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Tech Conference 2024",
+    "startAt": "2024-12-01T10:00:00Z",
+    "endAt": "2024-12-01T18:00:00Z",
+    "location": "San Francisco",
+    "status": "DRAFT",
+    "internalNotes": "VIP speakers confirmed"
+  }'
+```
 
-## Deploy on Vercel
+#### **PATCH /api/events/:id** (Admin)
+Update event status or notes
+```bash
+curl -X PATCH http://localhost:3000/api/events/{id} \
+  -H "Authorization: Bearer admin-token-123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "PUBLISHED",
+    "internalNotes": "Updated speaker lineup"
+  }'
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+#### **GET /api/events** (Admin)
+Get events with filters and pagination
+```bash
+curl "http://localhost:3000/api/events?page=1&limit=20&status=PUBLISHED&locations=San Francisco&dateFrom=2024-01-01&dateTo=2024-12-31" \
+  -H "Authorization: Bearer admin-token-123"
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+#### **GET /api/public/events** (Public)
+Get published/cancelled events (no auth required)
+```bash
+curl "http://localhost:3000/api/public/events?page=1&limit=10&locations=San Francisco&dateFrom=2024-01-01&dateTo=2024-12-31"
+```
+
+#### **GET /api/public/events/:id/summary** (Public)
+Stream AI-generated event summary
+```bash
+curl "http://localhost:3000/api/public/events/{id}/summary" \
+  -H "Accept: text/event-stream"
+```
+
+## Architecture
+
+### Clean Architecture Layers
+```
+src/app/api/
+├── domain/          # Business logic & entities
+├── data/            # Use cases implementation  
+├── infra/           # External adapters (DB, cache, etc.)
+├── presentation/    # Controllers & HTTP layer
+└── main/            # DI & route configuration
+```
+
+### Project Structure
+```
+├── src/app/
+│   ├── api/                 # Backend API
+│   ├── frontend/            # React components
+│   └── page.tsx             # Main page
+├── jest.config.js           # Test configuration
+└── package.json
+```
+
+## Frontend Usage
+
+1. **Admin Mode**: Login with `admin-token-123` to manage events
+2. **Public Mode**: View published events and AI summaries  
+3. **Event Creation**: Fill form with future dates, status defaults to DRAFT
+4. **Status Updates**: Use dropdown to transition between states
+5. **AI Summaries**: Click "Show AI Summary" on published events
+
+### Status Transition Rules
+- **DRAFT** → PUBLISHED ✅
+- **DRAFT** → CANCELLED ✅  
+- **PUBLISHED** → CANCELLED ✅
+- **PUBLISHED/CANCELLED** → DRAFT ❌
