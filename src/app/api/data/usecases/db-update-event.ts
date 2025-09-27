@@ -25,11 +25,18 @@ export class DbUpdateEvent implements UpdateEvent {
 
   private validateStatusTransition(currentStatus: string, newStatus?: string): void {
     if (!newStatus) return
+    if (currentStatus === newStatus) return
     if ((currentStatus === 'PUBLISHED' || currentStatus === 'CANCELLED') && newStatus === 'DRAFT') {
       throw new Error('Cannot move from PUBLISHED/CANCELLED back to DRAFT')
     }
-    if (currentStatus === 'PUBLISHED' && newStatus !== 'CANCELLED' && newStatus !== 'PUBLISHED') {
+    if (currentStatus === 'PUBLISHED' && newStatus !== 'CANCELLED') {
       throw new Error('PUBLISHED events can only be CANCELLED')
+    }
+    if (currentStatus === 'CANCELLED') {
+      throw new Error('CANCELLED events cannot be changed')
+    }
+    if (currentStatus === 'DRAFT' && newStatus !== 'PUBLISHED' && newStatus !== 'CANCELLED') {
+      throw new Error('DRAFT events can only be PUBLISHED or CANCELLED')
     }
   }
   

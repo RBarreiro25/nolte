@@ -23,7 +23,7 @@ export const createEventSchema = z.object({
 export const updateEventSchema = z.object({
   status: z.enum(['DRAFT', 'PUBLISHED', 'CANCELLED']).optional(),
   internalNotes: z.string().optional()
-})
+}).strict()
 
 export const getEventsQuerySchema = z.object({
   page: z.string().optional().transform(val => val ? parseInt(val, 10) : 1),

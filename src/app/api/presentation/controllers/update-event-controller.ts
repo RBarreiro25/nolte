@@ -50,7 +50,7 @@ export class UpdateEventController implements Controller {
         return notFound(createNotFoundError('Event'))
       }
       
-      if (errorMessage.includes('Cannot move from') || errorMessage.includes('can only be')) {
+      if (errorMessage.includes('Cannot move from') || errorMessage.includes('can only be') || errorMessage.includes('cannot be changed')) {
         return badRequest(createValidationError([
           { field: 'status', message: errorMessage }
         ]))
