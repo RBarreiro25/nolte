@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid'
+import { randomUUID } from 'crypto'
 import { EventModel, EventStatus } from '../../domain/models/event-model'
 import { CreateEventRepository, FindEventRepository, UpdateEventRepository, CreateEventParams, EventFilters, EventQueryResult, UpdateEventParams } from '../../data/protocols/event-repository'
 
@@ -8,7 +8,7 @@ export class InMemoryEventRepository implements CreateEventRepository, FindEvent
   async create(params: CreateEventParams): Promise<EventModel> {
     const event: EventModel = {
       ...params,
-      id: uuidv4(),
+      id: randomUUID(),
       status: (params.status as EventStatus) || 'DRAFT',
       isUpcoming: new Date(params.startAt) > new Date(),
       updatedAt: new Date().toISOString()
