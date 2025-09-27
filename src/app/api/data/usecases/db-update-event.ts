@@ -1,15 +1,12 @@
 import { UpdateEvent, UpdateEventRequest, UpdateEventResponse } from '../../domain/usecases/update-event'
 import { UpdateEventRepository, FindEventRepository } from '../protocols/event-repository'
 import { NotificationService } from '../protocols/notification-service'
-import { CacheService } from '../protocols/cache-service'
-import { EventModel } from '../../domain/models/event-model'
 
 export class DbUpdateEvent implements UpdateEvent {
   constructor(
     private readonly eventRepository: UpdateEventRepository,
     private readonly findRepository: FindEventRepository,
-    private readonly notificationService: NotificationService,
-    private readonly cacheService: CacheService
+    private readonly notificationService: NotificationService
   ) {}
 
   async handle(params: UpdateEventRequest): Promise<UpdateEventResponse> {
@@ -22,7 +19,6 @@ export class DbUpdateEvent implements UpdateEvent {
     if (statusChanged) {
       await this.handleStatusChange(oldEvent.status, event.status, event.title, event.id)
     }
-    await this.invalidateCacheIfNeeded(oldEvent, event)
     
     return { event, success: true, statusChanged }
   }
@@ -57,32 +53,5 @@ export class DbUpdateEvent implements UpdateEvent {
       oldStatus,
       newStatus
     })
-  }
-
-  private async invalidateCacheIfNeeded(oldEvent: EventModel, newEvent: EventModel): Promise<void> {
-    const fieldsChanged = 
-      oldEvent.title !== newEvent.title ||
-      oldEvent.location !== newEvent.location ||
-      oldEvent.startAt !== newEvent.startAt ||
-      oldEvent.endAt !== newEvent.endAt
-
-    if (fieldsChanged) {
-      // Generate cache keys for both old and new event data
-      const oldCacheKey = this.generateCacheKey(oldEvent.title, oldEvent.location, oldEvent.startAt, oldEvent.endAt)
-      const newCacheKey = this.generateCacheKey(newEvent.title, newEvent.location, newEvent.startAt, newEvent.endAt)
-      
-      // Delete both cache entries
-      await this.cacheService.delete(oldCacheKey)
-      if (oldCacheKey !== newCacheKey) {
-        await this.cacheService.delete(newCacheKey)
-      }
-      
-      console.log(`[CACHE] Invalidated cache for event ${newEvent.id} due to field changes`)
-    }
-  }
-
-  private generateCacheKey(title: string, location: string, startAt: string, endAt: string): string {
-    const data = { title, location, startAt, endAt }
-    return Buffer.from(JSON.stringify(data)).toString('base64')
   }
 }
