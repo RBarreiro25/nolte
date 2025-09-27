@@ -6,11 +6,12 @@ export class InMemoryEventRepository implements CreateEventRepository, FindEvent
   private events: EventModel[] = []
 
   async create(params: CreateEventParams): Promise<EventModel> {
+    const status = (params.status as EventStatus) || 'DRAFT'
     const event: EventModel = {
       ...params,
       id: randomUUID(),
-      status: (params.status as EventStatus) || 'DRAFT',
-      isUpcoming: new Date(params.startAt) > new Date(),
+      status,
+      isUpcoming: new Date(params.startAt) > new Date() && status !== 'CANCELLED',
       updatedAt: new Date().toISOString()
     }
     
@@ -48,12 +49,6 @@ export class InMemoryEventRepository implements CreateEventRepository, FindEvent
         new Date(event.endAt) <= new Date(filters.dateTo!)
       )
     }
-
-    filteredEvents = filteredEvents.map(event => ({
-      ...event,
-      isUpcoming: new Date(event.startAt) > new Date()
-    }))
-
     const total = filteredEvents.length
     if (!filters.page && !filters.limit) {
       return { events: filteredEvents, total }
@@ -75,12 +70,13 @@ export class InMemoryEventRepository implements CreateEventRepository, FindEvent
       throw new Error('Event not found')
     }
 
+    const newStatus = params.status !== undefined ? params.status as EventStatus : this.events[eventIndex].status
     const updatedEvent = {
       ...this.events[eventIndex],
-      status: params.status !== undefined ? params.status as EventStatus : this.events[eventIndex].status,
+      status: newStatus,
       internalNotes: params.internalNotes !== undefined ? params.internalNotes : this.events[eventIndex].internalNotes,
       updatedAt: new Date().toISOString(),
-      isUpcoming: new Date(this.events[eventIndex].startAt) > new Date()
+      isUpcoming: new Date(this.events[eventIndex].startAt) > new Date() && newStatus !== 'CANCELLED'
     }
 
     this.events[eventIndex] = updatedEvent

@@ -20,7 +20,7 @@ export const makeCreateEventUseCase = (): DbCreateEvent => {
 }
 
 export const makeUpdateEventUseCase = (): DbUpdateEvent => {
-  return new DbUpdateEvent(eventRepository, eventRepository, notificationService, cacheService)
+  return new DbUpdateEvent(eventRepository, eventRepository, notificationService)
 }
 
 export const makeGetEventsUseCase = (): DbGetEvents => {
