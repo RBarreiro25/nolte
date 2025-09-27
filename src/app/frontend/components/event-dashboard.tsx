@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { AuthToggle } from './auth-toggle'
 import { EventForm } from './event-form'
 import { EventFilters, FilterValues } from './event-filters'
 import { EventList } from './event-list'
-import { Separator } from './ui/separator'
+import { ThemeToggle } from './theme-toggle'
 import { Alert, AlertDescription } from './ui/alert'
 import { Event, PublicEvent } from '../lib/types'
 import { apiClient } from '../lib/api-client'
@@ -38,9 +39,15 @@ export function EventDashboard() {
     setError(null)
     
     try {
+      const apiFilters = {
+        ...filters,
+        dateFrom: filters.dateFrom ? filters.dateFrom.toISOString().split('T')[0] : undefined,
+        dateTo: filters.dateTo ? filters.dateTo.toISOString().split('T')[0] : undefined
+      }
+      
       const result = isAdmin 
-        ? await apiClient.getEvents(filters)
-        : await apiClient.getPublicEvents(filters)
+        ? await apiClient.getEvents(apiFilters)
+        : await apiClient.getPublicEvents(apiFilters)
 
       if (result.error) {
         const errorMessage = typeof result.error === 'string' 
@@ -78,6 +85,12 @@ export function EventDashboard() {
     setCurrentFilters(newFilters)
   }, [currentFilters])
 
+  const handleLimitChange = useCallback((limit: number) => {
+    const newFilters = { ...currentFilters, limit, page: 1 }
+    setCurrentFilters(newFilters)
+    loadEvents(newFilters)
+  }, [currentFilters, loadEvents])
+
   const handleEventCreated = useCallback(() => {
     loadEvents(currentFilters)
   }, [loadEvents, currentFilters])
@@ -90,66 +103,131 @@ export function EventDashboard() {
     loadEvents(currentFilters)
   }, [loadEvents, currentFilters, isAdmin])
 
-  const dashboardTitle = useMemo(() => {
-    return isAdmin ? '🎫 Nolte Event Service - Admin Dashboard' : '🎫 Nolte Event Service - Public Events'
-  }, [isAdmin])
-
   useEffect(() => {
     loadEvents()
   }, [loadEvents])
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            {dashboardTitle}
-          </h1>
-          <AuthToggle onAuthChange={handleAuthChange} />
+    <div className="min-h-screen bg-particles transition-colors duration-300">
+      <motion.header 
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="header-futuristic"
+      >
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between max-w-7xl">
+          <motion.div 
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="flex items-center space-x-4"
+          >
+            <h1 className="text-3xl font-bold text-glow bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent">
+              Nolte
+            </h1>
+          </motion.div>
+          
+          <motion.div 
+            initial={{ x: 20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="flex items-center space-x-4"
+          >
+            <AuthToggle onAuthChange={handleAuthChange} />
+            <ThemeToggle />
+          </motion.div>
         </div>
+      </motion.header>
 
-        {/* Admin-only Event Creation */}
+      <div className="container mx-auto px-6 py-8 max-w-7xl flex flex-col" style={{ minHeight: '100dvh' }}>
+        <div className="flex-grow">
+          <motion.section 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="mb-12"
+          >
+          <div className="text-center max-w-3xl mx-auto">
+            <h2 className="text-4xl lg:text-5xl font-primary text-foreground mb-4" style={{ fontWeight: 400, lineHeight: 1.4 }}>
+              {isAdmin ? 'Event Management' : 'Discover Events'}
+            </h2>
+            <p className="text-xl text-muted-foreground font-primary" style={{ fontWeight: 400, lineHeight: 1.4 }}>
+              {isAdmin 
+                ? 'Create, manage, and track your events with professional tools and AI-powered insights.'
+                : 'Explore upcoming events with AI-generated summaries and detailed information.'
+              }
+            </p>
+          </div>
+        </motion.section>
+
         {isAdmin && (
-          <>
-            <div className="mb-8">
+          <motion.section 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="mb-12"
+          >
+            <div className="glass-card p-8">
+              <h3 className="text-2xl font-primary font-semibold text-foreground mb-6">
+                Create New Event
+              </h3>
               <EventForm onEventCreated={handleEventCreated} />
             </div>
-            <Separator className="mb-8" />
-          </>
+          </motion.section>
         )}
 
-        {/* Error Display */}
         {error && (
-          <Alert className="mb-6">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="mb-8"
+          >
+            <Alert className="bg-destructive/10 border-destructive/20 text-destructive">
+              <AlertDescription className="font-secondary">{error}</AlertDescription>
+            </Alert>
+          </motion.div>
         )}
 
-        {/* Filters */}
-        <div className="mb-6">
+        <motion.section 
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="mb-8"
+        >
           <EventFilters 
             isAdmin={isAdmin}
             onFiltersChange={handleFiltersChange}
             loading={loading}
           />
+        </motion.section>
+
+        <motion.section 
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.6 }}
+        >
+          <EventList
+            events={events}
+            isAdmin={isAdmin}
+            loading={loading}
+            error={error}
+            pagination={pagination}
+            onEventUpdated={handleEventUpdated}
+            onPageChange={handlePageChange}
+            onLimitChange={handleLimitChange}
+          />
+        </motion.section>
         </div>
 
-        {/* Events List */}
-        <EventList
-          events={events}
-          isAdmin={isAdmin}
-          loading={loading}
-          error={error}
-          pagination={pagination}
-          onEventUpdated={handleEventUpdated}
-          onPageChange={handlePageChange}
-        />
-
-        {/* Footer */}
-        <div className="mt-12 pt-8 border-t border-gray-200 text-center text-sm text-gray-500">
-          <p>Nolte Event Service - Built with Next.js, TypeScript & Clean Architecture</p>
-        </div>
+        <motion.footer 
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.7 }}
+          className="mt-auto py-4 pt-8 text-center"
+        >
+          <p className="text-muted-foreground font-secondary text-sm">
+            © 2025 Nolte. All rights reserved.
+          </p>
+        </motion.footer>
       </div>
     </div>
   )

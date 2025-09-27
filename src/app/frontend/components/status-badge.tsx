@@ -6,17 +6,18 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status }: StatusBadgeProps) {
-  const config = useMemo(() => {
-    const variants = {
-      DRAFT: { variant: 'secondary' as const, color: 'text-slate-600' },
-      PUBLISHED: { variant: 'default' as const, color: 'text-green-600' },
-      CANCELLED: { variant: 'destructive' as const, color: 'text-red-600' }
+  const className = useMemo(() => {
+    const baseClass = 'status-badge-futuristic'
+    const statusClasses = {
+      DRAFT: 'status-badge-draft',
+      PUBLISHED: 'status-badge-published',
+      CANCELLED: 'status-badge-cancelled'
     }
-    return variants[status]
+    return `${baseClass} ${statusClasses[status]}`
   }, [status])
 
   return (
-    <Badge variant={config.variant} className={config.color}>
+    <Badge variant="outline" className={className}>
       {status}
     </Badge>
   )

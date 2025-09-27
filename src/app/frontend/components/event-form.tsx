@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useCallback, useMemo } from 'react'
+import { motion } from 'framer-motion'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
+import { DatePicker } from './ui/date-picker'
 import { Alert, AlertDescription } from './ui/alert'
+import { Spinner } from './ui/spinner'
 import { apiClient } from '../lib/api-client'
 import { useToast } from '../hooks/use-toast'
 
@@ -14,40 +16,33 @@ interface EventFormProps {
 
 interface FormData {
   title: string
-  startAt: string
-  endAt: string
+  startAt: Date | null
+  endAt: Date | null
   location: string
   internalNotes: string
 }
 
 export function EventForm({ onEventCreated }: EventFormProps) {
-  const formatDateTimeLocal = useCallback((date: Date) => {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
-    return `${year}-${month}-${day}T${hours}:${minutes}`
+  const defaultTimes = useMemo(() => {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    
+    const startTime = new Date(tomorrow)
+    startTime.setHours(10, 0, 0, 0)
+    
+    const endTime = new Date(tomorrow)
+    endTime.setHours(18, 0, 0, 0)
+
+    return {
+      start: startTime,
+      end: endTime
+    }
   }, [])
-
-  const getDefaultStartTime = useCallback(() => {
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    tomorrow.setHours(10, 0, 0, 0)
-    return formatDateTimeLocal(tomorrow)
-  }, [formatDateTimeLocal])
-
-  const getDefaultEndTime = useCallback(() => {
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    tomorrow.setHours(18, 0, 0, 0)
-    return formatDateTimeLocal(tomorrow)
-  }, [formatDateTimeLocal])
 
   const [formData, setFormData] = useState<FormData>({
     title: '',
-    startAt: getDefaultStartTime(),
-    endAt: getDefaultEndTime(),
+    startAt: defaultTimes.start,
+    endAt: defaultTimes.end,
     location: '',
     internalNotes: ''
   })
@@ -55,7 +50,7 @@ export function EventForm({ onEventCreated }: EventFormProps) {
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
 
-  const updateField = useCallback((field: keyof FormData, value: string) => {
+  const updateField = useCallback((field: keyof FormData, value: string | Date | null) => {
     setFormData(prev => ({ ...prev, [field]: value }))
     setError(null)
   }, [])
@@ -63,15 +58,13 @@ export function EventForm({ onEventCreated }: EventFormProps) {
   const validateForm = useMemo(() => {
     const { title, startAt, endAt, location } = formData
     const isValid = title.trim() && startAt && endAt && location.trim()
-    const startDate = new Date(startAt)
-    const endDate = new Date(endAt)
     const now = new Date()
     
     return {
-      isValid: isValid && startDate > now && endDate > startDate,
+      isValid: isValid && startAt > now && endAt > startAt,
       errors: {
-        pastDate: startDate <= now,
-        endBeforeStart: endDate <= startDate,
+        pastDate: startAt ? startAt <= now : false,
+        endBeforeStart: startAt && endAt ? endAt <= startAt : false,
         missingFields: !isValid
       }
     }
@@ -97,8 +90,8 @@ export function EventForm({ onEventCreated }: EventFormProps) {
     try {
       const result = await apiClient.createEvent({
         title: formData.title.trim(),
-        startAt: new Date(formData.startAt).toISOString(),
-        endAt: new Date(formData.endAt).toISOString(),
+        startAt: formData.startAt!.toISOString(),
+        endAt: formData.endAt!.toISOString(),
         location: formData.location.trim(),
         internalNotes: formData.internalNotes.trim() || undefined
       })
@@ -116,8 +109,8 @@ export function EventForm({ onEventCreated }: EventFormProps) {
       } else {
         setFormData({
           title: '',
-          startAt: '',
-          endAt: '',
+          startAt: defaultTimes.start,
+          endAt: defaultTimes.end,
           location: '',
           internalNotes: ''
         })
@@ -139,101 +132,159 @@ export function EventForm({ onEventCreated }: EventFormProps) {
     } finally {
       setIsLoading(false)
     }
-  }, [formData, validateForm.isValid, validateForm.errors.pastDate, validateForm.errors.endBeforeStart, onEventCreated, toast])
+  }, [formData, validateForm.isValid, validateForm.errors.pastDate, validateForm.errors.endBeforeStart, onEventCreated, toast, defaultTimes])
 
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Create New Event</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Event Title</label>
-            <Input
-              placeholder="Enter event title"
-              value={formData.title}
-              onChange={(e) => updateField('title', e.target.value)}
-              maxLength={200}
-              required
-              className={!formData.title.trim() && formData.title !== '' ? 'border-red-500' : ''}
-            />
-            <div className="flex justify-between text-xs text-slate-500 mt-1">
-              {!formData.title.trim() && formData.title !== '' ? (
-                <span className="text-red-500">Title is required</span>
-              ) : (
-                <span>Required field</span>
-              )}
-              <span>{formData.title.length}/200</span>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium">Start Date & Time</label>
-              <Input
-                type="datetime-local"
-                value={formData.startAt}
-                onChange={(e) => updateField('startAt', e.target.value)}
-                required
-                className={validateForm.errors.pastDate ? 'border-red-500' : ''}
-              />
-              {validateForm.errors.pastDate && (
-                <p className="text-sm text-red-500 mt-1">Event cannot start in the past</p>
-              )}
-            </div>
-            <div>
-              <label className="text-sm font-medium">End Date & Time</label>
-              <Input
-                type="datetime-local"
-                value={formData.endAt}
-                onChange={(e) => updateField('endAt', e.target.value)}
-                required
-                className={validateForm.errors.endBeforeStart ? 'border-red-500' : ''}
-              />
-              {validateForm.errors.endBeforeStart && (
-                <p className="text-sm text-red-500 mt-1">End time must be after start time</p>
-              )}
-            </div>
-          </div>
-          
-          <div>
-            <Input
-              placeholder="Location"
-              value={formData.location}
-              onChange={(e) => updateField('location', e.target.value)}
-              required
-              className={!formData.location.trim() && formData.location !== '' ? 'border-red-500' : ''}
-            />
-            {!formData.location.trim() && formData.location !== '' && (
-              <p className="text-sm text-red-500 mt-1">Location is required</p>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <motion.div
+          initial={{ x: -20, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="space-y-2"
+        >
+          <label className="text-sm font-medium text-foreground font-primary">
+            Event Title
+          </label>
+          <Input
+            placeholder="Enter event title"
+            value={formData.title}
+            onChange={(e) => updateField('title', e.target.value)}
+            maxLength={200}
+            required
+            className={`input-futuristic ${
+              !formData.title.trim() && formData.title !== '' ? 'border-destructive focus:border-destructive' : ''
+            }`}
+          />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            {!formData.title.trim() && formData.title !== '' ? (
+              <span className="text-destructive">Title is required</span>
+            ) : (
+              <span>Required field</span>
             )}
+            <span>{formData.title.length}/200</span>
           </div>
-          
-          <div>
-            <Input
-              placeholder="Internal notes (optional)"
-              value={formData.internalNotes}
-              onChange={(e) => updateField('internalNotes', e.target.value)}
-            />
-          </div>
+        </motion.div>
 
-          {error && (
-            <Alert>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
+        <motion.div
+          initial={{ x: 20, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="space-y-2"
+        >
+          <label className="text-sm font-medium text-foreground font-primary">
+            Location
+          </label>
+          <Input
+            placeholder="Event location"
+            value={formData.location}
+            onChange={(e) => updateField('location', e.target.value)}
+            required
+            className={`input-futuristic ${
+              !formData.location.trim() && formData.location !== '' ? 'border-destructive focus:border-destructive' : ''
+            }`}
+          />
+          {!formData.location.trim() && formData.location !== '' && (
+            <p className="text-xs text-destructive">Location is required</p>
           )}
+        </motion.div>
+      </div>
 
-          <Button 
-            type="submit" 
-            disabled={!validateForm.isValid || isLoading}
-            className="w-full"
-          >
-            {isLoading ? 'Creating...' : 'Create Event'}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <motion.div
+          initial={{ x: -20, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="space-y-2"
+        >
+          <label className="text-sm font-medium text-foreground font-primary">
+            Start Date & Time
+          </label>
+          <DatePicker
+            value={formData.startAt}
+            onChange={(date) => updateField('startAt', date)}
+            placeholder="Select start date & time"
+            includeTime={true}
+            minDate={new Date()}
+            className={validateForm.errors.pastDate ? 'border-destructive focus:border-destructive' : ''}
+          />
+          {validateForm.errors.pastDate && (
+            <p className="text-xs text-destructive">Event cannot start in the past</p>
+          )}
+        </motion.div>
+
+        <motion.div
+          initial={{ x: 20, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="space-y-2"
+        >
+          <label className="text-sm font-medium text-foreground font-primary">
+            End Date & Time
+          </label>
+          <DatePicker
+            value={formData.endAt}
+            onChange={(date) => updateField('endAt', date)}
+            placeholder="Select end date & time"
+            includeTime={true}
+            minDate={formData.startAt || new Date()}
+            className={validateForm.errors.endBeforeStart ? 'border-destructive focus:border-destructive' : ''}
+          />
+          {validateForm.errors.endBeforeStart && (
+            <p className="text-xs text-destructive">End time must be after start time</p>
+          )}
+        </motion.div>
+      </div>
+
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.5 }}
+        className="space-y-2"
+      >
+        <label className="text-sm font-medium text-foreground font-primary">
+          Internal Notes (Optional)
+        </label>
+        <Input
+          placeholder="Add internal notes for your team"
+          value={formData.internalNotes}
+          onChange={(e) => updateField('internalNotes', e.target.value)}
+          className="input-futuristic"
+        />
+      </motion.div>
+
+      {error && (
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+        >
+          <Alert className="bg-destructive/10 border-destructive/20 text-destructive">
+            <AlertDescription className="font-secondary">{error}</AlertDescription>
+          </Alert>
+        </motion.div>
+      )}
+
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.6 }}
+      >
+        <Button 
+          type="submit" 
+          disabled={!validateForm.isValid || isLoading}
+          className="w-auto min-w-[200px] btn-futuristic py-3 px-8 disabled:opacity-50 disabled:cursor-not-allowed mx-auto"
+        >
+          {isLoading ? (
+            <div className="flex items-center gap-2">
+              <Spinner size="sm" />
+              <span>Creating Event</span>
+            </div>
+          ) : (
+            'Create Event'
+          )}
+        </Button>
+      </motion.div>
+    </form>
   )
 }

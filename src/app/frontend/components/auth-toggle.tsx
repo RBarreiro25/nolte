@@ -2,7 +2,6 @@
 
 import { useState, useCallback } from 'react'
 import { Button } from './ui/button'
-import { Input } from './ui/input'
 import { Badge } from './ui/badge'
 import { apiClient } from '../lib/api-client'
 
@@ -12,15 +11,12 @@ interface AuthToggleProps {
 
 export function AuthToggle({ onAuthChange }: AuthToggleProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [token, setToken] = useState('admin-token-123')
 
   const handleLogin = useCallback(() => {
-    if (token.trim()) {
-      apiClient.setToken(token)
-      setIsAuthenticated(true)
-      onAuthChange(true)
-    }
-  }, [token, onAuthChange])
+    apiClient.setToken('admin-token-123')
+    setIsAuthenticated(true)
+    onAuthChange(true)
+  }, [onAuthChange])
 
   const handleLogout = useCallback(() => {
     apiClient.clearToken()
@@ -28,34 +24,27 @@ export function AuthToggle({ onAuthChange }: AuthToggleProps) {
     onAuthChange(false)
   }, [onAuthChange])
 
-  const handleTokenChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setToken(e.target.value)
-  }, [])
 
   return (
-    <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg">
+    <div className="flex items-center gap-3">
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium">View Mode:</span>
-        <Badge variant={isAuthenticated ? 'default' : 'secondary'}>
+        <Badge 
+          className={isAuthenticated 
+            ? 'bg-gray-200 text-green-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-green-300 dark:hover:bg-gray-600' 
+            : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+          }
+        >
           {isAuthenticated ? 'Admin' : 'Public'}
         </Badge>
       </div>
       
       {!isAuthenticated ? (
-        <div className="flex items-center gap-2">
-          <Input
-            placeholder="Bearer token"
-            value={token}
-            onChange={handleTokenChange}
-            className="w-40"
-          />
-          <Button onClick={handleLogin} size="sm">
-            Login as Admin
-          </Button>
-        </div>
+        <Button onClick={handleLogin} className="btn-futuristic h-8 px-4 text-xs">
+          Go to Admin
+        </Button>
       ) : (
-        <Button onClick={handleLogout} variant="outline" size="sm">
-          Switch to Public View
+        <Button onClick={handleLogout} className="btn-futuristic h-8 px-3 text-xs bg-foreground/20 hover:bg-foreground/30 text-foreground">
+          Go to Public
         </Button>
       )}
     </div>
