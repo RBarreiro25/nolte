@@ -10,13 +10,14 @@ export class MockAISummaryAdapter implements AISummaryService {
     const cachedSummary = await this.cacheService.get(cacheKey)
 
     if (cachedSummary) {
+      const stream = this.createSummaryStream(cachedSummary, cacheKey, true)
       const summary: EventSummary = {
         eventId,
         summary: cachedSummary,
         cacheKey,
         generatedAt: new Date().toISOString()
       }
-      return { summary, cached: true }
+      return { summary, cached: true, stream }
     }
 
     const summaryText = this.generateMockSummary(title, location, startAt, endAt)

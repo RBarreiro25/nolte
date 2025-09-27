@@ -1,32 +1,27 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { Button } from './ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
-import { Badge } from './ui/badge'
-import { Alert, AlertDescription } from './ui/alert'
+import { useState, useCallback, useEffect } from 'react'
 import { Loader2 } from 'lucide-react'
+import { Error as ErrorIcon } from '@mui/icons-material'
 
 interface SummaryStreamProps {
   eventId: string
   eventTitle: string
+  autoStart?: boolean
+  onCompleted?: () => void
 }
 
-export function SummaryStream({ eventId, eventTitle }: SummaryStreamProps) {
+export function SummaryStream({ eventId, autoStart = false, onCompleted }: SummaryStreamProps) {
   const [summary, setSummary] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
-  const [isComplete, setIsComplete] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [cacheInfo, setCacheInfo] = useState<{ cached: boolean; cacheKey: string } | null>(null)
 
   const startStreaming = useCallback(async () => {
     if (isStreaming) return
 
     setIsStreaming(true)
-    setIsComplete(false)
     setSummary('')
     setError(null)
-    setCacheInfo(null)
 
     try {
       const response = await fetch(`/api/public/events/${eventId}/summary`, {
@@ -64,17 +59,15 @@ export function SummaryStream({ eventId, eventTitle }: SummaryStreamProps) {
             try {
               const eventData = JSON.parse(line.slice(5).trim())
               
-              if (eventData.cached !== undefined) {
-                setCacheInfo({ cached: eventData.cached, cacheKey: eventData.cacheKey })
-              } else if (eventData.token) {
+              if (eventData.token) {
                 setSummary(prev => prev + eventData.token)
               } else if (eventData.complete) {
-                setIsComplete(true)
                 setIsStreaming(false)
+                onCompleted?.()
                 break
               }
             } catch {
-              console.warn('Failed to parse SSE data:', line)
+              continue
             }
           }
         }
@@ -83,84 +76,42 @@ export function SummaryStream({ eventId, eventTitle }: SummaryStreamProps) {
       setError(err instanceof Error ? err.message : 'Failed to stream summary')
       setIsStreaming(false)
     }
-  }, [eventId, isStreaming])
+  }, [eventId, isStreaming, onCompleted])
 
-  const resetStream = useCallback(() => {
-    setIsStreaming(false)
-    setIsComplete(false)
-    setSummary('')
-    setError(null)
-    setCacheInfo(null)
-  }, [])
+
+  useEffect(() => {
+    if (autoStart && !summary && !isStreaming && !error) {
+      startStreaming()
+    }
+  }, [autoStart, summary, isStreaming, error, startStreaming])
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">AI Event Summary</CardTitle>
-          <div className="flex items-center gap-2">
-            {cacheInfo && (
-              <Badge variant={cacheInfo.cached ? 'secondary' : 'default'}>
-                {cacheInfo.cached ? 'Cached' : 'Live'}
-              </Badge>
-            )}
-            {!isStreaming && !isComplete && (
-              <Button onClick={startStreaming} size="sm">
-                Generate Summary
-              </Button>
-            )}
-            {(isComplete || error) && (
-              <Button onClick={resetStream} variant="outline" size="sm">
-                Reset
-              </Button>
-            )}
-          </div>
+    <div className="w-full">
+      {error && (
+        <div className="flex items-center gap-1 text-xs mb-2" style={{ color: '#ef4444' }}>
+          <ErrorIcon style={{ fontSize: 12 }} />
+          <span>Error: {error}</span>
         </div>
-      </CardHeader>
-      
-      <CardContent>
-        {error && (
-          <Alert className="mb-4">
-            <AlertDescription>
-              Error generating summary: {error}
-            </AlertDescription>
-          </Alert>
-        )}
+      )}
 
-        {isStreaming && (
-          <div className="flex items-center gap-2 mb-4 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Generating AI summary...
-          </div>
-        )}
+      {isStreaming && (
+        <div className="flex items-center gap-2 mb-2 text-xs font-primary" style={{ color: 'var(--muted-foreground)' }}>
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Generating summary...
+        </div>
+      )}
 
-        {summary && (
-          <div className="space-y-3">
-            <div className="prose prose-sm max-w-none">
-              <p className="text-gray-700 leading-relaxed">
-                {summary}
-                {isStreaming && <span className="animate-pulse">|</span>}
-              </p>
-            </div>
-            
-            {cacheInfo && (
-              <div className="text-xs text-muted-foreground">
-                {cacheInfo.cached ? (
-                  <span>📄 Retrieved from cache (key: {cacheInfo.cacheKey})</span>
-                ) : (
-                  <span>✨ Freshly generated (cached for future requests)</span>
-                )}
-              </div>
-            )}
+      {summary && (
+        <div className="space-y-2 max-w-[295px]">
+          <div className="text-xs font-medium mb-1 font-primary" style={{ color: 'var(--card-foreground)' }}>
+            AI Summary
           </div>
-        )}
-
-        {!summary && !isStreaming && !error && (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>Click &quot;Generate Summary&quot; to get an AI-generated summary of &quot;{eventTitle}&quot;</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          <p className="text-xs leading-relaxed font-primary" style={{ color: 'var(--card-foreground)' }}>
+            {summary}
+            {isStreaming && <span className="animate-pulse" style={{ color: 'var(--nolte-orange)' }}>|</span>}
+          </p>
+        </div>
+      )}
+    </div>
   )
 }
