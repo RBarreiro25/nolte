@@ -29,7 +29,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts((prev) => [...prev, { ...toast, id }])
     setTimeout(() => {
       dismiss(id)
-    }, 2500)
+    }, 3000)
   }, [dismiss])
 
 
