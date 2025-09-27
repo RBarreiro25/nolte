@@ -1,0 +1,16 @@
+module.exports = {
+  roots: ['<rootDir>/src'],
+  collectCoverageFrom: [
+    '<rootDir>/src/**/*.ts',
+    '!**/*.d.ts'
+  ],
+  coverageDirectory: 'coverage',
+  testEnvironment: 'node',
+  transform: {
+    '.+\\.ts$': 'ts-jest'
+  },
+  moduleNameMapper: {
+    '@/(.*)': '<rootDir>/src/$1'
+  },
+  testMatch: ['**/__tests__/**/*.test.ts']
+}
