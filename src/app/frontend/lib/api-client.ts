@@ -1,10 +1,9 @@
 import { ErrorResponse } from './types'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? `${window.location.origin}/api` : '/api')
-
 interface ApiResponse<T> {
   data?: T
-  error?: string | ErrorResponse
+  error?: ErrorResponse
 }
 
 export class ApiClient {
@@ -45,7 +44,7 @@ export class ApiClient {
       const data = await response.json()
       return { data }
     } catch {
-      return { error: 'Network error' }
+      return { error: { code: 'NETWORK_ERROR', message: 'Network error' } }
     }
   }
 
