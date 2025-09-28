@@ -76,7 +76,7 @@ export function DatePicker({
 
   if (includeTime) {
     return (
-      <div className={`flex gap-4 ${className || ''}`}>
+      <div className={`flex flex-col sm:flex-row gap-4 ${className || ''}`}>
         <div className="flex flex-col gap-3">
           <Label htmlFor="date-picker" className="px-1 font-primary">
             Date
