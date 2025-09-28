@@ -1,6 +1,6 @@
 # Nolte Event Service
 
-## How to Run Backend Locally
+## How to Run both FrontEnd and BackEnd Locally
 
 ### Prerequisites
 - Node.js 18+ 
