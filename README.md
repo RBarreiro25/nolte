@@ -10,7 +10,7 @@
 
 1. **Clone and install**
 ```bash
-git clone <your-repo-url>
+git clone <https://github.com/RBarreiro25/nolte.git>
 cd nolte-challenge
 npm install
 ```
